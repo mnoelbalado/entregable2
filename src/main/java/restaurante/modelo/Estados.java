@@ -35,7 +35,6 @@ public final class Estados {
 
     public enum EstadoCocinero {
         ESPERANDO_TRABAJO,
-        ESPERANDO_SARTENES,
         COCINANDO,
         FINALIZADO
     }

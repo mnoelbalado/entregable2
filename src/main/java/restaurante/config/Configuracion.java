@@ -1,5 +1,9 @@
 package restaurante.config;
 
+import java.util.List;
+import restaurante.modelo.Menu;
+import restaurante.util.Tiempos;
+
 /** Constantes de la simulacion. Todos los tiempos estan en milisegundos. */
 public final class Configuracion {
 
@@ -35,11 +39,45 @@ public final class Configuracion {
 
     // TCmin y TCmax pertenecen a cada Menu, no a la configuracion global.
 
-    // Anexo obligatorio para grupos de tres integrantes.
-    public static final boolean ANEXO_HABILITADO = false;
-    public static final int Q = 2; // Total de sartenes.
-    public static final long TWmin = 1_000;
-    public static final long TWmax = 3_000;
+    /** Rango inclusivo e inmutable, compartido por los actores. */
+    public record Rango(long min, long max) {
+        public Rango { validarRango("Tiempo", min, max); }
+        public long sortear() { return Tiempos.aleatorio(min, max); }
+        public void esperar() throws InterruptedException { Tiempos.esperar(sortear()); }
+    }
+
+    /** Permite probar otras capacidades y tiempos sin modificar las constantes. */
+    public record Parametros(long duracion, int mesas, int personas, int mozos,
+            int cocineros, int cajeros, Rango llegada, Rango seleccion,
+            Rango comida, Rango pedido, Rango entrega, Rango limpieza,
+            Rango cobro, List<Menu> carta) {
+        public Parametros {
+            if (duracion <= 0 || mesas <= 0 || personas <= 0 || mozos <= 0
+                    || cocineros <= 0 || cajeros <= 0) {
+                throw new IllegalArgumentException("Duracion y cantidades deben ser positivas.");
+            }
+            Math.multiplyExact(mesas, personas);
+            for (Rango rango : new Rango[]{llegada, seleccion, comida, pedido,
+                    entrega, limpieza, cobro}) {
+                java.util.Objects.requireNonNull(rango, "Falta un rango de tiempos.");
+            }
+            if (llegada.min() == 0) throw new IllegalArgumentException("Llegada debe ser positiva.");
+            carta = List.copyOf(carta);
+            if (carta.isEmpty()) throw new IllegalArgumentException("La carta no puede estar vacia.");
+        }
+    }
+
+    public static Parametros predeterminados() {
+        validar();
+        return new Parametros(T, M, P, Z, C, Y,
+                new Rango(TPmin, TPmax), new Rango(TMmin, TMmax),
+                new Rango(TQmin, TQmax), new Rango(TZmin, TZmax),
+                new Rango(TRmin, TRmax), new Rango(TLmin, TLmax),
+                new Rango(TYmin, TYmax), List.of(
+                        new Menu("Pasta", 1000, 2000),
+                        new Menu("Milanesa", 2000, 3500),
+                        new Menu("Pescado", 1500, 2800)));
+    }
 
     private Configuracion() {
         // Esta clase no necesita instancias.
@@ -69,15 +107,6 @@ public final class Configuracion {
 
         if (TPmin == 0) {
             throw new IllegalArgumentException("TPmin debe ser positivo.");
-        }
-        if (ANEXO_HABILITADO) {
-            if (Q < 2) {
-                throw new IllegalArgumentException("Q debe ser al menos 2.");
-            }
-            validarRango("TW", TWmin, TWmax);
-            if (TWmin == 0) {
-                throw new IllegalArgumentException("TWmin debe ser positivo.");
-            }
         }
     }
 
